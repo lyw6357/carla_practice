@@ -1234,15 +1234,26 @@ class CameraManager(object):
 
 # refact
 class Button():
-    def __init__(self, x, y, image):
-        self.image = image
+    def __init__(self, x, y, image, scale):
+        width = image.get_width()
+        height = image.get_height()
+        self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
         self.rect = self.image.get_rect()
         self.rect.topleft = (x,y)
+        self.clicked = False
 
     def draw(self, display):
-        display.blit(self.image, (self.rect.x, self.rect.y))
+        pos = pygame.mouse.get_pos()
 
-# start_button = Button(600, 600, start_img)
+        if self.rect.collidepoint(pos):
+            if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+                self.clicked = True
+                print('CLICKED')
+
+        if pygame.mouse.get_pressed()[0] == 0:
+            self.clicked = False
+
+        display.blit(self.image, (self.rect.x, self.rect.y))
 #
 
 def game_loop(args):
@@ -1278,7 +1289,7 @@ def game_loop(args):
         pygame.display.flip()
         # refact
         start_img = pygame.image.load('start_btn.png').convert_alpha()
-        start_button = Button(600, 600, start_img)
+        start_button = Button(600, 600, start_img, 0.5)
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
