@@ -1232,6 +1232,18 @@ class CameraManager(object):
 # -- game_loop() ---------------------------------------------------------------
 # ==============================================================================
 
+# refact
+class Button():
+    def __init__(self, x, y, image):
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x,y)
+
+    def draw(self, display):
+        display.blit(self.image, (self.rect.x, self.rect.y))
+
+# start_button = Button(600, 600, start_img)
+#
 
 def game_loop(args):
     pygame.init()
@@ -1264,7 +1276,10 @@ def game_loop(args):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         display.fill((0,0,0))
         pygame.display.flip()
-
+        # refact
+        start_img = pygame.image.load('start_btn.png').convert_alpha()
+        start_button = Button(600, 600, start_img)
+        #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
         controller = KeyboardControl(world, args.autopilot)
@@ -1283,6 +1298,9 @@ def game_loop(args):
                 return
             world.tick(clock)
             world.render(display)
+            # refact
+            start_button.draw(display)
+            #
             pygame.display.flip()
 
     finally:
