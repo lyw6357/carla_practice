@@ -1258,6 +1258,11 @@ class Button():
                     self.traffic_count += 1
                     print('traffic clicked')
                 self.clicked = True
+
+        if pygame.mouse.get_pressed()[0] == 0:
+            self.clicked = False
+
+        display.blit(self.image, (self.rect.x, self.rect.y))
 #
 
 def game_loop(args):
@@ -1293,9 +1298,9 @@ def game_loop(args):
         pygame.display.flip()
         # refact
         start_img = pygame.image.load('start_btn.png').convert_alpha()
-        weather_button = Button(500, 600, start_img, 0.5)
-        time_button = Button(600, 600, start_img, 0.5)
-        traffic_button = Button(700, 600, start_img, 0.5)
+        weather_button = Button(500, 600, start_img, 0.3)
+        time_button = Button(700, 600, start_img, 0.3)
+        traffic_button = Button(900, 600, start_img, 0.3)
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
