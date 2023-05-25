@@ -1241,19 +1241,23 @@ class Button():
         self.rect = self.image.get_rect()
         self.rect.topleft = (x,y)
         self.clicked = False
+        self.traffic_count = 0
 
-    def draw(self, display):
+    def draw(self, display, world, mode):
         pos = pygame.mouse.get_pos()
 
         if self.rect.collidepoint(pos):
             if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+                if mode == 'weather':
+                    world.next_weather()
+                    print('weather clicked')
+                elif mode == 'time':
+                    print('time clicked')
+                elif mode == 'traffic' and self.traffic_count <= 1:
+                    os.system("start cmd /k python generate_traffic.py")
+                    self.traffic_count += 1
+                    print('traffic clicked')
                 self.clicked = True
-                print('CLICKED')
-
-        if pygame.mouse.get_pressed()[0] == 0:
-            self.clicked = False
-
-        display.blit(self.image, (self.rect.x, self.rect.y))
 #
 
 def game_loop(args):
@@ -1289,7 +1293,9 @@ def game_loop(args):
         pygame.display.flip()
         # refact
         start_img = pygame.image.load('start_btn.png').convert_alpha()
-        start_button = Button(600, 600, start_img, 0.5)
+        weather_button = Button(500, 600, start_img, 0.5)
+        time_button = Button(600, 600, start_img, 0.5)
+        traffic_button = Button(700, 600, start_img, 0.5)
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
@@ -1310,7 +1316,9 @@ def game_loop(args):
             world.tick(clock)
             world.render(display)
             # refact
-            start_button.draw(display)
+            weather_button.draw(display, world, 'weather')
+            time_button.draw(display, world, 'time')
+            traffic_button.draw(display, world, 'traffic')
             #
             pygame.display.flip()
 
