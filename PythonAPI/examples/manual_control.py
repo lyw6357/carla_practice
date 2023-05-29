@@ -1314,8 +1314,11 @@ class Button():
                     os.system("start cmd /k python generate_traffic.py")
                     self.traffic_count += 1
                     print('traffic clicked')
-                # elif mode == 'imgsave':
-                #     world.camera_manager.toggle_recording()
+                elif mode == 'imgsave':
+                    world.camera_manager.toggle_recording()
+                elif mode =='change Vehicle':
+                    world.restart()
+                    print('change Vehicle')
                 self.clicked = True
 
         if pygame.mouse.get_pressed()[0] == 0:
@@ -1360,7 +1363,8 @@ def game_loop(args):
         weather_button = Button(500, 600, start_img, 0.3)
         time_button = Button(700, 600, start_img, 0.3)
         traffic_button = Button(900, 600, start_img, 0.3)
-        # img_save_button = Button(500, 100, start_img, 0.3)
+        img_save_button = Button(500, 100, start_img, 0.3)
+        changeVehicle_button=Button(300,600,start_img, 0.05)
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
@@ -1385,6 +1389,7 @@ def game_loop(args):
             time_button.draw(display, world, 'time')
             traffic_button.draw(display, world, 'traffic')
             img_save_button.draw(display, world, 'imgsave')
+            changeVehicle_button.draw(display, world, 'change Vehicle')
             #
             pygame.display.flip()
 
