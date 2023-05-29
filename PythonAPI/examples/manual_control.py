@@ -1470,7 +1470,7 @@ def game_loop(args):
         time_button = Button(700, 600, start_img, 0.3)
         traffic_button = Button(900, 600, start_img, 0.3)
         img_save_button = Button(500, 100, start_img, 0.3)
-        changeVehicle_button=Button(300,600,start_img, 0.05)
+        changeVehicle_button=Button(300,600,start_img, 0.3)
         pascal_save_button = Button(700, 100, start_img, 0.3)
         #
         hud = HUD(args.width, args.height)
