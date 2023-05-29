@@ -94,6 +94,9 @@ import random
 import re
 import weakref
 
+# Image Save to PASCAL object detection
+from pascal_voc_writer import Writer
+
 try:
     import pygame
     from pygame.locals import KMOD_CTRL
@@ -1141,6 +1144,7 @@ class CameraManager(object):
         self._parent = parent_actor
         self.hud = hud
         self.recording = False
+        self.pascal_voc = False
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
@@ -1234,11 +1238,105 @@ class CameraManager(object):
     def toggle_recording(self):
         self.recording = not self.recording
         self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
-
+     
+    def toggle_pascal_voc(self):
+        self.pascal_voc = not self.pascal_voc
+        self.hud.notification('Recording Object Detection %s' % ('On' if self.pascal_voc else 'Off'))
     def render(self, display):
         if self.surface is not None:
             display.blit(self.surface, (0, 0))
+      
+    def build_projection_matrix(self, w, h, fov):
+        focal = w / (2.0 * np.tan(fov * np.pi / 360.0))
+        K = np.identity(3)
+        K[0, 0] = K[1, 1] = focal
+        K[0, 2] = w / 2.0
+        K[1, 2] = h / 2.0
+        return K
+    
+    def get_image_point(self, loc, K, w2c):
+        # Calculate 2D projection of 3D coordinate
 
+        # Format the input coordinate (loc is a carla.Position object)
+        point = np.array([loc.x, loc.y, loc.z, 1])
+        # transform to camera coordinates
+        point_camera = np.dot(w2c, point)
+
+        # New we must change from UE4's coordinate system to an "standard"
+        # (x, y ,z) -> (y, -z, x)
+        # and we remove the fourth componebonent also
+        point_camera = [point_camera[1], -point_camera[2], point_camera[0]]
+
+        # now project 3D->2D using the camera matrix
+        point_img = np.dot(K, point_camera)
+        # normalize
+        point_img[0] /= point_img[2]
+        point_img[1] /= point_img[2]
+
+        return point_img[0:2]
+    
+    def object_to_image_pascal(self, image):
+        # Retrieve the image
+        image = image
+
+        world = self._parent.get_world()
+        bp_library = world.get_blueprint_library()
+        
+        camera_bp = bp_library.find('sensor.camera.rgb')
+        camera = self.sensor
+        # Get the camera matrix 
+        world_2_camera = np.array(camera.get_transform().get_inverse_matrix())
+
+        frame_path = 'output/pascal/%06d' % image.frame
+
+        image_w = camera_bp.get_attribute("image_size_x").as_int()
+        image_h = camera_bp.get_attribute("image_size_y").as_int()
+        
+        fov = camera_bp.get_attribute("fov").as_float()
+        
+        K = self.build_projection_matrix(image_w, image_h, fov)
+        # Get playerVehicle
+        vehicle = self._parent
+        # Save the image
+        image.save_to_disk(frame_path + '.png')
+
+        # Initialize the exporter
+        writer = Writer(frame_path + '.png', image_w, image_h)
+
+        for npc in world.get_actors().filter('*vehicle*'):
+            if npc.id != vehicle.id:
+                bb = npc.bounding_box
+                dist = npc.get_transform().location.distance(vehicle.get_transform().location)
+                if dist < 50:
+                    forward_vec = vehicle.get_transform().get_forward_vector()
+                    ray = npc.get_transform().location - vehicle.get_transform().location
+                    if forward_vec.dot(ray) > 1:
+                        p1 = self.get_image_point(bb.location, K, world_2_camera)
+                        verts = [v for v in bb.get_world_vertices(npc.get_transform())]
+                        x_max = -10000
+                        x_min = 10000
+                        y_max = -10000
+                        y_min = 10000
+                        for vert in verts:
+                            p = self.get_image_point(vert, K, world_2_camera)
+                            if p[0] > x_max:
+                                x_max = p[0]
+                            if p[0] < x_min:
+                                x_min = p[0]
+                            if p[1] > y_max:
+                                y_max = p[1]
+                            if p[1] < y_min:
+                                y_min = p[1]
+
+                        # Add the object to the frame (ensure it is inside the image)
+                        if x_min > 0 and x_max < image_w and y_min > 0 and y_max < image_h: 
+                            writer.addObject('vehicle', x_min, y_min, x_max, y_max)
+
+        # Save the bounding boxes in the scene
+        writer.save(frame_path + '.xml')
+        
+        
+        
     @staticmethod
     def _parse_image(weak_self, image):
         self = weak_self()
@@ -1281,7 +1379,13 @@ class CameraManager(object):
             array = array[:, :, ::-1]
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
         if self.recording:
-            image.save_to_disk('_out/%08d' % image.frame)
+            # clock = pygame.time.Clock()
+            # clock.get_time()
+            if image.frame % 1000 < 50:
+                image.save_to_disk('_out/%08d' % image.frame)
+        if self.pascal_voc:
+            if image.frame % 1000 < 50:
+                self.object_to_image_pascal(image)
 
 
 # ==============================================================================
@@ -1319,6 +1423,8 @@ class Button():
                 elif mode =='change Vehicle':
                     world.restart()
                     print('change Vehicle')
+                elif mode == 'pascalsave':
+                    world.camera_manager.toggle_pascal_voc()
                 self.clicked = True
 
         if pygame.mouse.get_pressed()[0] == 0:
@@ -1365,6 +1471,7 @@ def game_loop(args):
         traffic_button = Button(900, 600, start_img, 0.3)
         img_save_button = Button(500, 100, start_img, 0.3)
         changeVehicle_button=Button(300,600,start_img, 0.05)
+        pascal_save_button = Button(700, 100, start_img, 0.3)
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
@@ -1390,6 +1497,7 @@ def game_loop(args):
             traffic_button.draw(display, world, 'traffic')
             img_save_button.draw(display, world, 'imgsave')
             changeVehicle_button.draw(display, world, 'change Vehicle')
+            pascal_save_button.draw(display, world, 'pascalsave')
             #
             pygame.display.flip()
 
