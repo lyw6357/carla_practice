@@ -1232,6 +1232,38 @@ class CameraManager(object):
 # -- game_loop() ---------------------------------------------------------------
 # ==============================================================================
 
+# refact
+class Button():
+    def __init__(self, x, y, image, scale):
+        width = image.get_width()
+        height = image.get_height()
+        self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x,y)
+        self.clicked = False
+        self.traffic_count = 0
+
+    def draw(self, display, world, mode):
+        pos = pygame.mouse.get_pos()
+
+        if self.rect.collidepoint(pos):
+            if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+                if mode == 'weather':
+                    world.next_weather()
+                    print('weather clicked')
+                elif mode == 'time':
+                    print('time clicked')
+                elif mode == 'traffic' and self.traffic_count <= 1:
+                    os.system("start cmd /k python generate_traffic.py")
+                    self.traffic_count += 1
+                    print('traffic clicked')
+                self.clicked = True
+
+        if pygame.mouse.get_pressed()[0] == 0:
+            self.clicked = False
+
+        display.blit(self.image, (self.rect.x, self.rect.y))
+#
 
 def game_loop(args):
     pygame.init()
@@ -1264,7 +1296,12 @@ def game_loop(args):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         display.fill((0,0,0))
         pygame.display.flip()
-
+        # refact
+        start_img = pygame.image.load('start_btn.png').convert_alpha()
+        weather_button = Button(500, 600, start_img, 0.3)
+        time_button = Button(700, 600, start_img, 0.3)
+        traffic_button = Button(900, 600, start_img, 0.3)
+        #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
         controller = KeyboardControl(world, args.autopilot)
@@ -1283,6 +1320,11 @@ def game_loop(args):
                 return
             world.tick(clock)
             world.render(display)
+            # refact
+            weather_button.draw(display, world, 'weather')
+            time_button.draw(display, world, 'time')
+            traffic_button.draw(display, world, 'traffic')
+            #
             pygame.display.flip()
 
     finally:
