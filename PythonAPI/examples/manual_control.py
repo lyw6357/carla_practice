@@ -65,6 +65,7 @@ from __future__ import print_function
 import glob
 import os
 import sys
+import generate_traffic
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -148,13 +149,16 @@ except ImportError:
 # -- Global functions ----------------------------------------------------------
 # ==============================================================================
 
-
+# refact
 def find_weather_presets():
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
     name = lambda x: ' '.join(m.group(0) for m in rgx.finditer(x))
     presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
-    return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
-
+    original_presets = [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
+    # 중간에 정렬 엉킨 거 맞춰줌 (night - noon - sunset 순으로)
+    original_presets[11], original_presets[12], original_presets[13] = original_presets[12], original_presets[13], original_presets[11]
+    return original_presets
+#
 
 def get_actor_display_name(actor, truncate=250):
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
@@ -211,7 +215,9 @@ class World(object):
         self.radar_sensor = None
         self.camera_manager = None
         self._weather_presets = find_weather_presets()
-        self._weather_index = 0
+        # refact
+        self._weather_index = 6
+        #
         self._actor_filter = args.filter
         self._actor_generation = args.generation
         self._gamma = args.gamma
@@ -236,6 +242,11 @@ class World(object):
             carla.MapLayer.Walls,
             carla.MapLayer.All
         ]
+        # refact
+        self._climate_index = 6
+        self._time_index = 0
+        self.check_weather_list = [3, 4, 5, 6, 7]
+        #
 
     def restart(self):
         self.player_max_speed = 1.589
@@ -303,6 +314,51 @@ class World(object):
         preset = self._weather_presets[self._weather_index]
         self.hud.notification('Weather: %s' % preset[1])
         self.player.get_world().set_weather(preset[0])
+
+    # refact
+    def next_climate(self, reverse=False):
+        if self._climate_index in self.check_weather_list:
+            # 바꾸기 전 climate index가 3, 4, 5 일 경우 6(default)로 index 이동
+            if self._climate_index < 6:
+                self._climate_index = 6
+            # 바꾸기 전 climate index가 6(default)일 경우 7(dust storm)으로 index 이동
+            elif self._climate_index == 6:
+                self._climate_index += 1
+            # 바꾸기 전 climate index가 7(dust storm)일 경우 이미 설정된 시간대에 맞는 climate로 index 이동
+            elif self._climate_index == 7:
+                self._climate_index += (self._time_index + 1)
+        else:
+            # 나머지는 time 유지한 상태로 날씨만 변경
+            self._climate_index += -3 if reverse else 3
+        
+        self._climate_index %= len(self._weather_presets)
+        preset = self._weather_presets[self._climate_index]
+        self.hud.notification('Weather: %s' % preset[1])
+        self.player.get_world().set_weather(preset[0])
+
+    def next_time(self, reverse=False):
+        # time index : 0=night 1=noon 2=sunset
+        if self._climate_index >= 6 and self._climate_index in self.check_weather_list:
+            # 바꾸기 전 index가 6, 7일 경우 시간대 변경 불가
+            print("시간대를 조정할 수 없습니다.")
+            pass
+        else:
+            # time index가 2일 경우 0으로 돌려서 time setting
+            if self._time_index == 2:
+                self._time_index = 0
+                self._climate_index += -2
+            
+            # time index가 0, 1일 경우 다음 time setting
+            else:
+                self._time_index += 1
+                self._climate_index += 1
+
+            
+            self._climate_index %= len(self._weather_presets)
+            preset = self._weather_presets[self._climate_index]
+            self.hud.notification('Weather: %s' % preset[1])
+            self.player.get_world().set_weather(preset[0])
+    #
 
     def next_map_layer(self, reverse=False):
         self.current_map_layer += -1 if reverse else 1
@@ -1248,15 +1304,18 @@ class Button():
 
         if self.rect.collidepoint(pos):
             if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
-                if mode == 'weather':
-                    world.next_weather()
-                    print('weather clicked')
+                if mode == 'climate':
+                    world.next_climate()
+                    print('climate clicked')
                 elif mode == 'time':
+                    world.next_time()
                     print('time clicked')
                 elif mode == 'traffic' and self.traffic_count <= 1:
                     os.system("start cmd /k python generate_traffic.py")
                     self.traffic_count += 1
                     print('traffic clicked')
+                # elif mode == 'imgsave':
+                #     world.camera_manager.toggle_recording()
                 self.clicked = True
 
         if pygame.mouse.get_pressed()[0] == 0:
@@ -1301,6 +1360,7 @@ def game_loop(args):
         weather_button = Button(500, 600, start_img, 0.3)
         time_button = Button(700, 600, start_img, 0.3)
         traffic_button = Button(900, 600, start_img, 0.3)
+        # img_save_button = Button(500, 100, start_img, 0.3)
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
@@ -1321,9 +1381,10 @@ def game_loop(args):
             world.tick(clock)
             world.render(display)
             # refact
-            weather_button.draw(display, world, 'weather')
+            weather_button.draw(display, world, 'climate')
             time_button.draw(display, world, 'time')
             traffic_button.draw(display, world, 'traffic')
+            img_save_button.draw(display, world, 'imgsave')
             #
             pygame.display.flip()
 
