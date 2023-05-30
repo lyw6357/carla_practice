@@ -1487,12 +1487,12 @@ def game_loop(args):
         image_img = pygame.image.load('./image/image_btn.png').convert_alpha()
         vehicle_img = pygame.image.load('./image/vehicle_btn.png').convert_alpha()
         pascal_img = pygame.image.load('./image/pascal_btn.png').convert_alpha()
-        weather_button = Button(500, 600, weather_img, 0.3)
-        time_button = Button(700, 600, time_img, 0.3)
-        traffic_button = Button(900, 600, traffic_img, 0.3)
-        img_save_button = Button(500, 100, image_img, 0.3)
-        changeVehicle_button=Button(300,600,vehicle_img, 0.3)
-        pascal_save_button = Button(700, 100, pascal_img, 0.3)
+        changeVehicle_button=Button(1150, 0,vehicle_img, 0.4) # 1
+        weather_button = Button(1150, 50, weather_img, 0.4)  # 2 1280x720
+        time_button = Button(1150, 100, time_img, 0.4) # 3
+        traffic_button = Button(1150, 150, traffic_img, 0.4) # 4
+        img_save_button = Button(1150, 200, image_img, 0.4) # 5
+        pascal_save_button = Button(1150, 250, pascal_img, 0.4) # 6
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
