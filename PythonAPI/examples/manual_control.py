@@ -1335,8 +1335,6 @@ class CameraManager(object):
         # Save the bounding boxes in the scene
         writer.save(frame_path + '.xml')
         
-        
-        
     @staticmethod
     def _parse_image(weak_self, image):
         self = weak_self()
@@ -1387,6 +1385,23 @@ class CameraManager(object):
             if image.frame % 1000 < 50:
                 self.object_to_image_pascal(image)
 
+# ==============================================================================
+# -- traffic ---------------------------------------------------------------
+# ==============================================================================
+
+def generate_traffic():
+    client = carla.Client('127.0.0.1', 2000)
+    world = client.get_world()
+
+    bp_lib = world.get_blueprint_library()
+    spawn_points = world.get_map().get_spawn_points()
+
+    for i in range(30):
+        vehicle_bp = random.choice(bp_lib.filter('vehicle'))
+        vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
+        if vehicle:
+            vehicle.set_autopilot(True)
+
 
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------------
@@ -1415,7 +1430,8 @@ class Button():
                     world.next_time()
                     print('time clicked')
                 elif mode == 'traffic' and self.traffic_count <= 1:
-                    os.system("start cmd /k python generate_traffic.py")
+                    # os.system("start cmd /k python generate_walker.py")
+                    generate_traffic()
                     self.traffic_count += 1
                     print('traffic clicked')
                 elif mode == 'imgsave':
@@ -1465,13 +1481,18 @@ def game_loop(args):
         display.fill((0,0,0))
         pygame.display.flip()
         # refact
-        start_img = pygame.image.load('start_btn.png').convert_alpha()
-        weather_button = Button(500, 600, start_img, 0.3)
-        time_button = Button(700, 600, start_img, 0.3)
-        traffic_button = Button(900, 600, start_img, 0.3)
-        img_save_button = Button(500, 100, start_img, 0.3)
-        changeVehicle_button=Button(300,600,start_img, 0.05)
-        pascal_save_button = Button(700, 100, start_img, 0.3)
+        weather_img = pygame.image.load('./image/weather_btn.png').convert_alpha()
+        time_img = pygame.image.load('./image/time_btn.png').convert_alpha()
+        traffic_img = pygame.image.load('./image/traffic_btn.png').convert_alpha()
+        image_img = pygame.image.load('./image/image_btn.png').convert_alpha()
+        vehicle_img = pygame.image.load('./image/vehicle_btn.png').convert_alpha()
+        pascal_img = pygame.image.load('./image/pascal_btn.png').convert_alpha()
+        weather_button = Button(500, 600, weather_img, 0.3)
+        time_button = Button(700, 600, time_img, 0.3)
+        traffic_button = Button(900, 600, traffic_img, 0.3)
+        img_save_button = Button(500, 100, image_img, 0.3)
+        changeVehicle_button=Button(300,600,vehicle_img, 0.3)
+        pascal_save_button = Button(700, 100, pascal_img, 0.3)
         #
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
