@@ -45,7 +45,9 @@ _benchmarks_results
 _images*
 _out*
 _output*
+pascal*
 _site
 core
 profiler.csv
-.png
+*.png
+*.xml
